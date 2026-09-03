@@ -283,13 +283,7 @@ footer .fn-heart{font-size:15px;color:var(--rose);margin:0 4px}
       <div class="orn"></div>
       <p class="sec-sub">点击照片可放大浏览（支持批量上传替换）</p>
     </div>
-    <div class="gallery-grid fade" id="galleryGrid">
-      <div class="ph"><img src="" alt=""></div>
-      <div class="ph"><img src="" alt=""></div>
-      <div class="ph"><img src="" alt=""></div>
-      <div class="ph"><img src="" alt=""></div>
-      <div class="ph add" id="galleryAddBtn" title="上传照片">＋</div>
-    </div>
+    <div class="gallery-grid fade" id="galleryGrid"></div>
     <input type="file" id="galleryFile" accept="image/*" multiple hidden>
   </div>
 </section>
@@ -584,62 +578,45 @@ const LS = { k: 'hb_wedding_20261002_', get(k, d){ try{ const v = localStorage.g
 (function gallery(){
   const grid = $('#galleryGrid');
   const fileInp = $('#galleryFile');
-  const addBtn = $('#galleryAddBtn');
-  let photos = LS.get('photos', []);        // [{data, w, h}]
-  const LIMIT = 24;
-  const MAX_TOTAL = 4200 * 1024;            // 总存储预算约 4.1MB（localStorage 5MB 限制）
+  // 内置婚纱照（部署在 photos/thumb + photos/full）
+  const BUILTIN = ['021A7419','021A7441','021A7478','021A7521','021A7532','021A7538','021A7548','021A7565','021A7604','021A7625','021A7632','021A7656','021A7696','021A7710','021A7716','021A7740','021A7744','021A7757','021A7765','021A7770','021A7773','021A7774','021A7785','021A7789','021A7791','021A7793','021A7822','021A7829','021A7852','021A7867','021A7870','021A7875','021A7886','021A7895','021A7897','021A7900','021A7910','021A7917','021A7931','021A7938','021A7943','021A7954','021A7967','021A7974','021A7984','021A7993','021A8000','021A8010','021A8011','021A8026','021A8036','021A8049','021A8058','021A8061','021A8067','021A8079','021A8085','021A8162','021A8189','021A8202','021A8206','021A8222','021A8236','021A8246','021A8251','021A8275','021A8289','021A8293','021A8318'];
+  let uploads = LS.get('photos', []);          // 用户额外上传（localStorage）
+  const UPLOAD_LIMIT = 24;
+  const MAX_TOTAL = 4200 * 1024;
 
-  // 占位图（未上传照片时显示）
-  const defaults = [
-    'linear-gradient(150deg,#F3E3DC,#E9CFC4)',
-    'linear-gradient(150deg,#EFE3D6,#E7D0C0)',
-    'linear-gradient(150deg,#F1E0E4,#E3C9CD)',
-    'linear-gradient(150deg,#EDE8DA,#E0D6BC)'
-  ];
-
-  function compDataUrl(){
-    try{
-      let total = 0;
-      photos.forEach(p => total += p.data.length);
-      return Math.round(total / 1024);
-    }catch(e){ return 0 }
+  function all(){
+    return [
+      ...BUILTIN.map(n => ({ builtin:true, n })),
+      ...uploads.map(p => ({ builtin:false, data:p.data }))
+    ];
   }
+  function thumbOf(it){ return it.builtin ? 'photos/thumb/' + it.n + '.jpg' : it.data; }
+  function fullOf(it){ return it.builtin ? 'photos/full/' + it.n + '.jpg' : it.data; }
 
   function render(){
     grid.innerHTML = '';
-    const list = photos.length ? photos : defaults.map((g, i) => ({ data:null, grad:g, idx:i }));
-    list.forEach((ph, i) => {
+    const list = all();
+    list.forEach((it, i) => {
       const cell = document.createElement('div');
       cell.className = 'ph';
-      if (ph.data){
-        const img = document.createElement('img'); img.src = ph.data; img.alt = '照片';
-        img.addEventListener('click', () => openLB(i));
-        cell.appendChild(img);
+      const img = document.createElement('img');
+      img.src = thumbOf(it); img.alt = '照片'; img.loading = 'lazy';
+      img.addEventListener('click', () => openLB(i));
+      cell.appendChild(img);
+      if (!it.builtin){
         const del = document.createElement('i'); del.className='del'; del.textContent='✕';
-        del.addEventListener('click', e => { e.stopPropagation(); photos.splice(i,1); LS.set('photos', photos); render(); });
+        del.addEventListener('click', e => { e.stopPropagation(); uploads.splice(i - BUILTIN.length, 1); LS.set('photos', uploads); render(); });
         cell.appendChild(del);
-      } else {
-        cell.style.background = ph.grad;
-        cell.innerHTML = '<div style="color:#B99B76;font-size:12px;line-height:1.6;padding:0 8px;text-align:center">点这里<br>上传照片</div>';
-        cell.style.cursor = 'pointer';
-        cell.addEventListener('click', () => fileInp.click());
       }
       grid.appendChild(cell);
-      // 保留追加按钮
-      if (i === list.length - 1){
-        const add = document.createElement('div');
-        add.className = 'ph add'; add.textContent = '＋'; add.title = '添加照片';
-        add.addEventListener('click', () => fileInp.click());
-        grid.appendChild(add);
-      }
     });
-    if (!photos.length){
-      // 无照片时保持默认结构：4占位 + 上传
-    }
-    $('#galleryAddBtn')?.remove(); // 移除旧的静态触发点，全部由 JS 渲染
+    const add = document.createElement('div');
+    add.className = 'ph add'; add.textContent = '＋'; add.title = '可继续添加照片（存本机）';
+    add.addEventListener('click', () => fileInp.click());
+    grid.appendChild(add);
   }
 
-  // 压缩图片
+  // 压缩用户上传图片
   function compress(file){
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -651,8 +628,7 @@ const LS = { k: 'hb_wedding_20261002_', get(k, d){ try{ const v = localStorage.g
           if (w > maxW){ h = h * maxW / w; w = maxW; }
           const canvas = document.createElement('canvas');
           canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
           let quality = .72;
           let data = canvas.toDataURL('image/jpeg', quality);
           while (data.length > 260 * 1024 && quality > .35){ quality -= .08; data = canvas.toDataURL('image/jpeg', quality); }
@@ -666,20 +642,15 @@ const LS = { k: 'hb_wedding_20261002_', get(k, d){ try{ const v = localStorage.g
     });
   }
 
-  addBtn.addEventListener('click', () => fileInp.click());
   fileInp.addEventListener('change', async () => {
     const files = Array.from(fileInp.files || []);
     fileInp.value = '';
     if (!files.length) return;
-    for (const f of files.slice(0, LIMIT)){
-      if (photos.length >= LIMIT){ alert('最多上传 24 张照片'); break; }
-      try{
-        const c = await compress(f);
-        photos.push(c);
-        if (compDataUrl() > MAX_TOTAL){ photos.pop(); alert('本地存储空间不足，已停止继续添加（可删除一些照片）'); break; }
-      }catch(e){ console.warn('压缩失败', e); }
+    for (const f of files.slice(0, UPLOAD_LIMIT)){
+      if (uploads.length >= UPLOAD_LIMIT){ alert('最多额外上传 24 张照片'); break; }
+      try{ uploads.push(await compress(f)); }catch(e){ console.warn('压缩失败', e); }
     }
-    LS.set('photos', photos);
+    LS.set('photos', uploads);
     render();
   });
 
@@ -688,20 +659,20 @@ const LS = { k: 'hb_wedding_20261002_', get(k, d){ try{ const v = localStorage.g
   let cur = 0;
   function openLB(i){ cur = i; show(); lb.classList.add('open'); document.body.style.overflow = 'hidden'; }
   function show(){
-    const p = photos[cur];
-    if (!p){ lb.classList.remove('open'); return; }
-    lbImg.src = p.data;
-    lbCount.textContent = (cur + 1) + ' / ' + photos.length;
+    const list = all();
+    const it = list[cur];
+    if (!it){ lb.classList.remove('open'); return; }
+    lbImg.src = fullOf(it);
+    lbCount.textContent = (cur + 1) + ' / ' + list.length;
   }
   function closeLB(){ lb.classList.remove('open'); document.body.style.overflow = ''; }
   $('#lbClose').addEventListener('click', closeLB);
-  $('#lbPrev').addEventListener('click', e => { e.stopPropagation(); if (photos.length){ cur = (cur - 1 + photos.length) % photos.length; show(); } });
-  $('#lbNext').addEventListener('click', e => { e.stopPropagation(); if (photos.length){ cur = (cur + 1) % photos.length; show(); } });
+  $('#lbPrev').addEventListener('click', e => { e.stopPropagation(); const n = all().length; if (n){ cur = (cur - 1 + n) % n; show(); } });
+  $('#lbNext').addEventListener('click', e => { e.stopPropagation(); const n = all().length; if (n){ cur = (cur + 1) % n; show(); } });
   lb.addEventListener('click', e => { if (e.target === lb) closeLB(); });
 
   render();
 })();
-
 /* ================= 封面上传 ================= */
 (function coverUpload(){
   const btn = $('#coverUpload'), bg = $('#coverBg');
