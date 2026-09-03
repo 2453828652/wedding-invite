@@ -75,6 +75,8 @@ input,textarea{font-family:inherit;color:var(--ink)}
 #coverUpload{right:64px;font-size:15px}
 #musicBtn.playing{animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.4)}50%{box-shadow:0 0 0 8px rgba(255,255,255,0)}}
+#musicBtn.wanting{animation:pulse 1.4s infinite;border-color:rgba(255,224,180,.9)}
+#musicHint{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);z-index:3;font-size:12px;color:#fff;letter-spacing:.2em;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.55);padding:7px 18px;border-radius:999px;opacity:1;transition:opacity 1.6s ease;text-shadow:0 1px 4px rgba(120,80,60,.3)}
 @keyframes spin{to{transform:rotate(360deg)}}
 #musicBtn.playing .ico{animation:spin 4s linear infinite;display:inline-block}
 /* ============ 花瓣 ============ */
@@ -524,30 +526,56 @@ const LS = { k: 'hb_wedding_20261002_', get(k, d){ try{ const v = localStorage.g
 /* ================= 音乐 ================= */
 (function music(){
   const btn = $('#musicBtn'), audio = $('#bgm');
-  let enabled = LS.get('musicOn', false);
-  const files = ['wedding.mp3','music.mp3','bgm.mp3'];
+  let wantPlay = LS.get('musicOn', true);     // 默认希望播放（受浏览器手势限制）
   let srcOk = false;
+  const files = ['wedding.mp3','music.mp3','bgm.mp3'];
   // 探测同目录音乐文件
   (function probe(){
-    files.forEach(f => { const a = new Audio(); a.src = f; a.addEventListener('loadedmetadata', () => { if(!srcOk){ audio.src = f; srcOk = true; } }, { once:true }); });
+    files.forEach(f => {
+      const a = new Audio();
+      a.src = f;
+      a.addEventListener('loadedmetadata', () => { if (!srcOk && isFinite(a.duration) && a.duration > 0){ audio.src = f; srcOk = true; updateUI(); } }, { once:true });
+    });
   })();
+  function tryPlay(){
+    if (!srcOk) return false;
+    audio.play().then(() => updateUI()).catch(() => updateUI());
+    return true;
+  }
   function setState(on){
-    enabled = on; LS.set('musicOn', on);
-    btn.classList.toggle('playing', on);
-    if (on){ audio.play().catch(()=>showTip()); } else { audio.pause(); }
+    wantPlay = on; LS.set('musicOn', on);
+    if (on){ tryPlay(); } else { audio.pause(); }
+    updateUI();
   }
-  function showTip(){
-    const mask = $('#shareMask'); // 复用弹层提示音乐未添加
-    // 简单提示
-    if (!srcOk) alert('未找到背景音乐文件：请将 wedding.mp3 放在本文件同目录，或点击上传封面旁的音乐进行本地选择');
+  function updateUI(){
+    btn.classList.toggle('playing', wantPlay && srcOk && !audio.paused);
+    btn.classList.toggle('wanting', wantPlay && (audio.paused || !srcOk));
   }
-  btn.addEventListener('click', () => { if (!srcOk){ pickLocal(); return; } setState(!enabled); });
+  // 封面提示：点按开启音乐（仅首次进入显示，数秒后淡出）
+  const hint = document.createElement('div');
+  hint.id = 'musicHint';
+  hint.textContent = '♪ 点按屏幕 · 开启音乐';
+  const sh = document.getElementById('scrollHint');
+  if (sh) sh.parentNode.insertBefore(hint, sh);
+  setTimeout(() => { hint.style.opacity = '0'; }, 6000);
+  // 首次用户手势：浏览器放行后自动开始播放
+  let started = false;
+  function onFirstGesture(){
+    if (started) return; started = true;
+    if (wantPlay) tryPlay();
+    setTimeout(() => { const h = document.getElementById('musicHint'); if (h) h.style.opacity = '0'; }, 1200);
+  }
+  ['pointerdown','touchstart'].forEach(ev => document.addEventListener(ev, onFirstGesture, { passive:true }));
+  btn.addEventListener('click', () => {
+    if (!srcOk){ pickLocal(); return; }
+    setState(!wantPlay);
+  });
   function pickLocal(){
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*';
     inp.onchange = () => { const f = inp.files[0]; if (!f) return; audio.src = URL.createObjectURL(f); srcOk = true; setState(true); };
     inp.click();
   }
-  if (enabled && srcOk) setState(true);
+  updateUI();
 })();
 
 /* ================= 回到顶部 ================= */
