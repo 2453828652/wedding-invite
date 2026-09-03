@@ -527,52 +527,56 @@ const LS = { k: 'hb_wedding_20261002_', get(k, d){ try{ const v = localStorage.g
 (function music(){
   const btn = $('#musicBtn'), audio = $('#bgm');
   let wantPlay = LS.get('musicOn', true);     // 默认希望播放（受浏览器手势限制）
+  let gestureSeen = false;
   let srcOk = false;
-  const files = ['wedding.mp3','music.mp3','bgm.mp3'];
-  // 探测同目录音乐文件
-  (function probe(){
-    files.forEach(f => {
-      const a = new Audio();
-      a.src = f;
-      a.addEventListener('loadedmetadata', () => { if (!srcOk && isFinite(a.duration) && a.duration > 0){ audio.src = f; srcOk = true; updateUI(); } }, { once:true });
-    });
-  })();
-  function tryPlay(){
-    if (!srcOk) return false;
-    audio.play().then(() => updateUI()).catch(() => updateUI());
-    return true;
+  // 直接绑定音乐文件（wedding.mp3 已部署；失败则回退其他文件名）
+  const candidates = ['wedding.mp3','music.mp3','bgm.mp3'];
+  let ci = 0;
+  function setNextSrc(){
+    if (ci >= candidates.length){ srcOk = false; updateUI(); return; }
+    const f = candidates[ci++];
+    audio.src = f;
+  }
+  audio.addEventListener('error', () => { setNextSrc(); });
+  audio.addEventListener('loadedmetadata', () => { srcOk = true; maybePlay(); updateUI(); });
+  setNextSrc();
+
+  function maybePlay(){
+    if (wantPlay && gestureSeen && srcOk){
+      audio.play().then(() => updateUI()).catch(() => updateUI());
+    }
   }
   function setState(on){
     wantPlay = on; LS.set('musicOn', on);
-    if (on){ tryPlay(); } else { audio.pause(); }
+    if (on){ maybePlay(); } else { audio.pause(); }
     updateUI();
   }
   function updateUI(){
     btn.classList.toggle('playing', wantPlay && srcOk && !audio.paused);
     btn.classList.toggle('wanting', wantPlay && (audio.paused || !srcOk));
   }
-  // 封面提示：点按开启音乐（仅首次进入显示，数秒后淡出）
+  // 封面提示：点按开启音乐
   const hint = document.createElement('div');
   hint.id = 'musicHint';
   hint.textContent = '♪ 点按屏幕 · 开启音乐';
   const sh = document.getElementById('scrollHint');
   if (sh) sh.parentNode.insertBefore(hint, sh);
-  setTimeout(() => { hint.style.opacity = '0'; }, 6000);
-  // 首次用户手势：浏览器放行后自动开始播放
-  let started = false;
+  function hideHint(){ const h = document.getElementById('musicHint'); if (h) h.style.opacity = '0'; }
+  setTimeout(hideHint, 6000);
+  // 首次用户手势：浏览器放行后自动开始播放（若音乐还没加载完，加载完成后会自动补播）
   function onFirstGesture(){
-    if (started) return; started = true;
-    if (wantPlay) tryPlay();
-    setTimeout(() => { const h = document.getElementById('musicHint'); if (h) h.style.opacity = '0'; }, 1200);
+    gestureSeen = true;
+    maybePlay();
+    setTimeout(hideHint, 1200);
   }
-  ['pointerdown','touchstart'].forEach(ev => document.addEventListener(ev, onFirstGesture, { passive:true }));
-  btn.addEventListener('click', () => {
-    if (!srcOk){ pickLocal(); return; }
+  ['pointerdown','touchstart','click'].forEach(ev => document.addEventListener(ev, onFirstGesture, { passive:true }));
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
     setState(!wantPlay);
   });
   function pickLocal(){
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*';
-    inp.onchange = () => { const f = inp.files[0]; if (!f) return; audio.src = URL.createObjectURL(f); srcOk = true; setState(true); };
+    inp.onchange = () => { const f = inp.files[0]; if (!f) return; audio.src = URL.createObjectURL(f); srcOk = true; gestureSeen = true; setState(true); };
     inp.click();
   }
   updateUI();
