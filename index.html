@@ -534,25 +534,28 @@ function wxPush(title, content){
 /* ================= 音乐 ================= */
 (function music(){
   const btn = $('#musicBtn'), audio = $('#bgm');
-  let wantPlay = LS.get('musicOn2', true);    // v2 状态键：默认开启（避免旧版本误存 false）
+  const debugMode = new URLSearchParams(location.search).has('debug');
+  let wantPlay = LS.get('musicOn2', true);    // v2 状态键：默认开启
   let gestureSeen = false;
   let srcOk = false;
-  const candidates = ['wedding.mp3','music.mp3','bgm.mp3'];
-  let ci = 0;
-  function setNextSrc(){
-    if (ci >= candidates.length){ srcOk = false; updateUI(); return; }
-    const f = candidates[ci++];
-    audio.src = f;
-  }
-  audio.addEventListener('error', () => { setNextSrc(); });
-  audio.addEventListener('loadedmetadata', () => { srcOk = true; maybePlay(); updateUI(); });
-  setNextSrc();
+  let lastErr = '';
+  const srcUrl = new URL('wedding.mp3', location.href).href;
+  audio.src = srcUrl;                          // 直接绑定绝对完整地址（避免相对路径歧义）
+  audio.addEventListener('error', () => {
+    let code = 'unknown';
+    try { code = audio.error ? String(audio.error.code) : 'none'; } catch(e){}
+    lastErr = 'error:' + code + ' url=' + srcUrl;
+    updateUI();
+  });
+  audio.addEventListener('loadedmetadata', () => { srcOk = true; lastErr = ''; maybePlay(); updateUI(); });
 
   // 播放 + 失败自动重试（最多 4 次，每次间隔 700ms）
   function doPlay(attempt){
     if (!wantPlay || !srcOk) return;
     const p = audio.play();
-    if (p && typeof p.catch === 'function') p.catch(() => {});
+    if (p && typeof p.then === 'function'){
+      p.then(() => { lastErr = ''; updateUI(); }).catch((e) => { lastErr = 'play:rejected ' + (e && e.name || e); updateUI(); });
+    }
     if (attempt < 4){
       setTimeout(() => { if (audio.paused) doPlay(attempt + 1); }, 700);
     }
@@ -569,8 +572,23 @@ function wxPush(title, content){
   function updateUI(){
     btn.classList.toggle('playing', wantPlay && srcOk && !audio.paused);
     btn.classList.toggle('wanting', wantPlay && (audio.paused || !srcOk));
+    if (!debugMode) return;
+    let d = document.getElementById('musicDebug');
+    if (!d){
+      d = document.createElement('div');
+      d.id = 'musicDebug';
+      d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,.75);color:#ffe;font:12px/1.8 monospace;padding:8px 12px;white-space:pre-wrap';
+      document.body.appendChild(d);
+    }
+    d.textContent = [
+      'src=' + srcUrl,
+      'srcOk=' + srcOk + ' wantPlay=' + wantPlay + ' gesture=' + gestureSeen,
+      'paused=' + audio.paused + ' readyState=' + audio.readyState,
+      'duration=' + (isFinite(audio.duration) ? audio.duration.toFixed(2) : 'NaN'),
+      'err=' + (lastErr || '(无)'),
+      'hint: 点屏幕任意处后看是否变化'
+    ].join('\n');
   }
-  // 封面提示：点按开启音乐
   const hint = document.createElement('div');
   hint.id = 'musicHint';
   hint.textContent = '♪ 点按屏幕 · 开启音乐';
@@ -578,7 +596,6 @@ function wxPush(title, content){
   if (sh) sh.parentNode.insertBefore(hint, sh);
   function hideHint(){ const h = document.getElementById('musicHint'); if (h) h.style.opacity = '0'; }
   setTimeout(hideHint, 6000);
-  // 首次用户手势：浏览器放行后自动开始播放（若音乐还没加载完，加载完成后会自动补播）
   function onFirstGesture(){
     gestureSeen = true;
     doPlay(0);
@@ -591,7 +608,7 @@ function wxPush(title, content){
   });
   function pickLocal(){
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*';
-    inp.onchange = () => { const f = inp.files[0]; if (!f) return; audio.src = URL.createObjectURL(f); srcOk = true; gestureSeen = true; setState(true); };
+    inp.onchange = () => { const f = inp.files[0]; if (!f) return; audio.src = URL.createObjectURL(f); srcOk = true; lastErr = ''; gestureSeen = true; setState(true); };
     inp.click();
   }
   updateUI();
