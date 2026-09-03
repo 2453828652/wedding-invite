@@ -73,6 +73,17 @@ input,textarea{font-family:inherit;color:var(--ink)}
 }
 #musicBtn{right:16px}
 #coverUpload{right:64px;font-size:15px}
+/* ============ 音乐开启门页 ============ */
+#gate{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;text-align:center;background:linear-gradient(160deg,#EAD9C6 0%,#E9C9C2 55%,#D9AFA3 100%);transition:opacity .9s ease;flex-direction:column;padding:30px}
+#gate.hide{opacity:0;pointer-events:none}
+#gate .g-small{font-size:13px;letter-spacing:.42em;color:#fff;opacity:.9;margin-bottom:16px}
+#gate h1{font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:46px;color:#fff;font-weight:500;letter-spacing:.12em;text-shadow:0 2px 14px rgba(120,80,60,.3)}
+#gate .g-date{font-size:15px;color:#fff;letter-spacing:.3em;margin:16px 0 34px;opacity:.9}
+#gateBtn{display:inline-flex;align-items:center;gap:10px;padding:16px 40px;border-radius:999px;border:1px solid #fff;background:rgba(255,255,255,.22);backdrop-filter:blur(4px);color:#fff;font-size:17px;letter-spacing:.18em;box-shadow:0 10px 30px rgba(120,80,60,.25);animation:pulse 2s infinite}
+#gateBtn:active{transform:scale(.96)}
+#gate .g-tip{font-size:12px;color:#fff;opacity:.75;letter-spacing:.1em;margin-top:26px}
+#gate .g-heart{font-size:30px;margin-bottom:6px;animation:beat 1.4s infinite}
+@keyframes beat{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
 #musicBtn.playing{animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.4)}50%{box-shadow:0 0 0 8px rgba(255,255,255,0)}}
 #musicBtn.wanting{animation:pulse 1.4s infinite;border-color:rgba(255,224,180,.9)}
@@ -207,6 +218,16 @@ footer .fn-heart{font-size:15px;color:var(--rose);margin:0 4px}
 </style>
 </head>
 <body>
+
+<!-- ============ 音乐开启门页 ============ -->
+<div id="gate">
+  <div class="g-heart">💗</div>
+  <div class="g-small">WE ARE GETTING MARRIED</div>
+  <h1>吴齐赫 ﹠ 王姣</h1>
+  <div class="g-date">2026 · 10 · 02　10:58</div>
+  <button id="gateBtn">♫ 轻触开启音乐</button>
+  <div class="g-tip">建议调大音量 · 诚邀您见证我们的幸福时刻</div>
+</div>
 
 <!-- ============ 封面 ============ -->
 <section id="cover">
@@ -612,6 +633,22 @@ function wxPush(title, content){
     inp.click();
   }
   updateUI();
+})();
+
+/* ================= 音乐开启门页 ================= */
+(function gate(){
+  const g = document.getElementById('gate');
+  const btn = document.getElementById('gateBtn');
+  if (!g || !btn) return;
+  let done = false;
+  function enter(){
+    if (done) return; done = true;
+    g.classList.add('hide');
+    setTimeout(() => { if (g.parentNode) g.parentNode.removeChild(g); }, 950);
+  }
+  btn.addEventListener('click', enter);
+  // 若页面已被其他手势点开（debug 场景），门页不阻塞
+  document.addEventListener('pointerdown', () => { if (document.getElementById('musicDebug')) enter(); }, { once:true });
 })();
 
 /* ================= 回到顶部 ================= */
