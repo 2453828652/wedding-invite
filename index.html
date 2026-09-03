@@ -470,6 +470,14 @@ footer .fn-heart{font-size:15px;color:var(--rose);margin:0 4px}
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const LS = { k: 'hb_wedding_20261002_', get(k, d){ try{ const v = localStorage.getItem(this.k + k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }, set(k, v){ try{ localStorage.setItem(this.k + k, JSON.stringify(v)); }catch(e){ console.warn('存储失败', e); } } };
+/* 微信推送（PushPlus）：祝福墙 / 出席回执 实时通知新人 */
+function wxPush(title, content){
+  try{
+    const q = 'token=c6aea27ad16248a8af7a091346b4dbeb&title=' + encodeURIComponent(title) + '&content=' + encodeURIComponent(content) + '&template=txt';
+    fetch('https://www.pushplus.plus/send', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:q })
+      .catch(()=>{ const im = new Image(); im.src = 'https://www.pushplus.plus/send?' + q; });
+  }catch(e){}
+}
 
 /* ================= 花瓣动画 ================= */
 (function petals(){
@@ -770,6 +778,7 @@ const LS = { k: 'hb_wedding_20261002_', get(k, d){ try{ const v = localStorage.g
     // 记录到本地（本地单页无后端，可在开发时接入）
     const rec = { name: name.value.trim(), attend, count: n, phone: phone.value.trim(), msg: msg.value.trim(), t: Date.now() };
     const all = LS.get('rsvps', []); all.push(rec); LS.set('rsvps', all);
+    wxPush('💒 收到宾客回执', '姓名：' + rec.name + '\n出席：' + rec.attend + '\n人数：' + rec.count + (rec.phone ? '\n电话：' + rec.phone : '') + (rec.msg ? '\n祝福：' + rec.msg : ''));
     form.reset();
     $('#rsvpMask').classList.add('open');
   });
@@ -802,6 +811,7 @@ const LS = { k: 'hb_wedding_20261002_', get(k, d){ try{ const v = localStorage.g
     wishes.push({ name: n, text: t, t: Date.now() });
     if (wishes.length > 100) wishes = wishes.slice(wishes.length - 100);
     LS.set('wishes', wishes);
+    wxPush('💌 收到新祝福', (n ? '昵称：' + n + '\n' : '') + '祝福：' + t);
     $('#wishName').value = ''; $('#wishText').value = '';
     render();
   });
