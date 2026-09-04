@@ -61,6 +61,8 @@ input,textarea{font-family:inherit;color:var(--ink)}
 #cover .and{font-size:22px;margin:14px 0;color:#fff;opacity:.85;letter-spacing:.3em}
 #cover .date{font-size:16px;letter-spacing:.3em;margin:22px 0 6px;opacity:.95}
 #cover .place{font-size:13px;letter-spacing:.14em;opacity:.8}
+#cover .date-lunar{font-size:12px;letter-spacing:.24em;opacity:.82;margin-top:6px}
+.info-lunar{text-align:center;font-size:12px;color:var(--ink-soft);letter-spacing:.14em;margin-top:10px}
 #cover .scroll-hint{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:3;font-size:11px;letter-spacing:.3em;color:#fff;opacity:.85;display:flex;flex-direction:column;align-items:center;gap:8px}
 #cover .scroll-hint .arrow{width:1px;height:34px;background:linear-gradient(#fff,transparent);animation:drop 1.8s infinite}
 @keyframes drop{0%{transform:translateY(-8px);opacity:0}40%{opacity:1}100%{transform:translateY(12px);opacity:0}}
@@ -224,7 +226,7 @@ footer .fn-heart{font-size:15px;color:var(--rose);margin:0 4px}
   <div class="g-heart">💗</div>
   <div class="g-small">WE ARE GETTING MARRIED</div>
   <h1>吴齐赫 ﹠ 王姣</h1>
-  <div class="g-date">2026 · 10 · 02　10:58</div>
+  <div class="g-date">2026.10.02　10:58</div>
   <button id="gateBtn">♫ 轻触开启音乐</button>
   <div class="g-tip">建议调大音量 · 诚邀您见证我们的幸福时刻</div>
 </div>
@@ -239,7 +241,8 @@ footer .fn-heart{font-size:15px;color:var(--rose);margin:0 4px}
     <div class="small">WE ARE GETTING MARRIED</div>
     <h1>吴齐赫<br>&nbsp;﹠&nbsp;王&nbsp;姣</h1>
     <div class="and">♥</div>
-    <div class="date">2026 · 10 · 02　10:58</div>
+    <div class="date">2026.10.02　10:58</div>
+    <div class="date-lunar">农历 丙午年 八月廿二</div>
     <div class="place">吉林省舒兰市法特镇 · 今世缘喜宴广场 2 楼</div>
   </div>
   <div class="scroll-hint" id="scrollHint">向下滚动<em class="arrow"></em></div>
@@ -328,6 +331,7 @@ footer .fn-heart{font-size:15px;color:var(--rose);margin:0 4px}
       <b>📍 今世缘喜宴广场 · 2 楼</b>
       吉林省 舒兰市 法特镇 今世缘喜宴广场
     </div>
+    <div class="info-lunar fade">2026.10.02（农历 八月廿二）· 诚邀莅临</div>
     <div class="nav-btns fade">
       <button class="nav-btn" id="navAmap">🗺 高德地图导航</button>
       <button class="nav-btn" id="navBmap">🗺 百度地图导航</button>
